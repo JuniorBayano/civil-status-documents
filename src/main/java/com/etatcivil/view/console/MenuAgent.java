@@ -12,17 +12,10 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Scanner;
 
-/**
- * Menu pour les agents d'état civil
- */
+
 public class MenuAgent {
 
-    /**
-     * Affiche le menu agent
-     * @param scanner Scanner pour les saisies
-     * @param authService Service d'authentification
-     * @return true pour continuer, false pour se déconnecter
-     */
+
     public static boolean afficher(Scanner scanner, AuthenticationService authService) {
         ActeService acteService = new ActeService(authService);
 

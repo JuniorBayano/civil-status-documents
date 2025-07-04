@@ -10,9 +10,7 @@ import main.java.com.etatcivil.util.ValidationUtil;
 
 import java.util.Optional;
 
-/**
- * Service d'authentification et de gestion des sessions utilisateur
- */
+
 public class AuthenticationService {
 
     private final UtilisateurDAOImpl utilisateurDAO;
@@ -23,12 +21,7 @@ public class AuthenticationService {
         this.utilisateurConnecte = null;
     }
 
-    /**
-     * Authentifie un utilisateur
-     * @param login Login de l'utilisateur
-     * @param password Mot de passe
-     * @return true si authentification réussie
-     */
+
     public boolean authenticate(String login, String password) {
         try {
             // Validation des paramètres
@@ -56,9 +49,7 @@ public class AuthenticationService {
         }
     }
 
-    /**
-     * Déconnecte l'utilisateur actuel
-     */
+
     public void logout() {
         if (utilisateurConnecte != null) {
             System.out.println("👋 Déconnexion de: " + utilisateurConnecte.getNomComplet());
@@ -66,68 +57,42 @@ public class AuthenticationService {
         }
     }
 
-    /**
-     * Vérifie si un utilisateur est connecté
-     * @return true si un utilisateur est connecté
-     */
+
     public boolean isUserConnected() {
         return utilisateurConnecte != null;
     }
 
-    /**
-     * Retourne l'utilisateur connecté
-     * @return Utilisateur connecté ou null
-     */
+
     public Utilisateur getUtilisateurConnecte() {
         return utilisateurConnecte;
     }
 
-    /**
-     * Vérifie si l'utilisateur connecté a un rôle spécifique
-     * @param role Rôle à vérifier
-     * @return true si l'utilisateur a ce rôle
-     */
+
     public boolean hasRole(RoleUtilisateur role) {
         return utilisateurConnecte != null && utilisateurConnecte.getRole() == role;
     }
 
-    /**
-     * Vérifie si l'utilisateur connecté est un agent
-     * @return true si agent
-     */
+
     public boolean isAgent() {
         return hasRole(RoleUtilisateur.AGENT);
     }
 
-    /**
-     * Vérifie si l'utilisateur connecté est un chef
-     * @return true si chef
-     */
+
     public boolean isChef() {
         return hasRole(RoleUtilisateur.CHEF);
     }
 
-    /**
-     * Vérifie si l'utilisateur connecté est un invité
-     * @return true si invité
-     */
+
     public boolean isInvite() {
         return hasRole(RoleUtilisateur.INVITE);
     }
 
-    /**
-     * Vérifie les permissions pour créer un acte
-     * @return true si autorisé
-     */
+
     public boolean canCreateActe() {
         return isAgent() || isChef();
     }
 
-    /**
-     * Vérifie les permissions pour modifier un acte
-     * @param idAgentCreateur ID de l'agent qui a créé l'acte
-     * @return true si autorisé
-     */
+
     public boolean canModifyActe(int idAgentCreateur) {
         if (isChef()) {
             return true; // Le chef peut tout modifier
@@ -140,57 +105,38 @@ public class AuthenticationService {
         return false;
     }
 
-    /**
-     * Vérifie les permissions pour signer un acte
-     * @return true si autorisé
-     */
+
     public boolean canSignActe() {
         return isChef();
     }
 
-    /**
-     * Vérifie les permissions pour consulter tous les actes
-     * @return true si autorisé
-     */
+
     public boolean canViewAllActes() {
         return isChef() || isAgent();
     }
 
-    /**
-     * Vérifie les permissions pour gérer les utilisateurs
-     * @return true si autorisé
-     */
+
     public boolean canManageUsers() {
         return isChef();
     }
 
-    /**
-     * Vérifie les permissions pour voir les statistiques
-     * @return true si autorisé
-     */
+
     public boolean canViewStatistics() {
         return isChef();
     }
 
-    /**
-     * Change le mot de passe de l'utilisateur connecté
-     * @param ancienMotDePasse Ancien mot de passe
-     * @param nouveauMotDePasse Nouveau mot de passe
-     * @return true si changement réussi
-     */
+
     public boolean changerMotDePasse(String ancienMotDePasse, String nouveauMotDePasse) {
         if (!isUserConnected()) {
             System.out.println("❌ Aucun utilisateur connecté");
             return false;
         }
 
-        // Vérifier l'ancien mot de passe
         if (!utilisateurConnecte.getPassword().equals(ancienMotDePasse)) {
             System.out.println("❌ Ancien mot de passe incorrect");
             return false;
         }
 
-        // Valider le nouveau mot de passe
         if (!ValidationUtil.isPasswordValide(nouveauMotDePasse)) {
             System.out.println("❌ Le nouveau mot de passe doit contenir au moins 6 caractères");
             return false;
@@ -210,15 +156,7 @@ public class AuthenticationService {
         }
     }
 
-    /**
-     * Créer un nouvel utilisateur (réservé au chef)
-     * @param nom Nom
-     * @param prenom Prénom
-     * @param role Rôle
-     * @param login Login
-     * @param password Mot de passe
-     * @return Utilisateur créé ou null en cas d'erreur
-     */
+
     public Utilisateur creerUtilisateur(String nom, String prenom, RoleUtilisateur role,
                                         String login, String password) {
         if (!canManageUsers()) {
@@ -248,13 +186,13 @@ public class AuthenticationService {
         }
 
         try {
-            // Vérifier si le login existe déjà
+            // Verifier si le login existe déjà
             if (utilisateurDAO.existsByLogin(login)) {
                 System.out.println("❌ Ce login existe déjà");
                 return null;
             }
 
-            // Créer l'utilisateur
+            // Crer l'utilisateur
             Utilisateur nouvelUtilisateur = new Utilisateur(
                     ValidationUtil.nettoyerNom(nom),
                     ValidationUtil.nettoyerNom(prenom),
@@ -274,9 +212,7 @@ public class AuthenticationService {
         }
     }
 
-    /**
-     * Affiche les informations de l'utilisateur connecté
-     */
+
     public void afficherInfosUtilisateur() {
         if (utilisateurConnecte != null) {
             System.out.println("\n👤 UTILISATEUR CONNECTÉ:");

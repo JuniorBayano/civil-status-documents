@@ -8,6 +8,8 @@ import main.java.com.etatcivil.model.enums.RoleUtilisateur;
 import main.java.com.etatcivil.view.console.MenuPrincipal;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.Scanner;
 
 /**
@@ -36,7 +38,41 @@ public class MenuChef {
                     return MenuAgent.afficher(scanner, authService);
 
                 case "2":
-                    signerActe(scanner, acteService);
+                    System.out.println("\n✍️  SIGNER/VALIDER UN ACTE");
+                    System.out.print("Entrez le numéro de l'acte: ");
+                    String numeroActe = scanner.nextLine();
+
+                    Optional<Acte> acteOpt = acteService.rechercherActeParNumero(numeroActe);
+                    if (acteOpt.isPresent()) {
+                        Acte acte = acteOpt.get();
+                        System.out.println("\nDétails de l'acte:");
+                        System.out.println("Numéro: " + acte.getNumero());
+                        System.out.println("Type: " + acte.getType());
+                        System.out.println("Statut: " + acte.getStatut());
+
+                        System.out.println("1. Signer l'acte");
+                        System.out.println("0. Annuler");
+                        System.out.print("Votre choix: ");
+
+                        int choixValidation = scanner.nextInt();
+                        scanner.nextLine(); // consommer la nouvelle ligne
+
+                        switch (choixValidation) {
+                            case 1:
+                                acteService.validerActe(acte.getId());
+                                break;
+                            case 2:
+                                acteService.signerActe(acte.getId());
+                                break;
+                            case 0:
+                                System.out.println("Opération annulée");
+                                break;
+                            default:
+                                System.out.println("❌ Choix invalide");
+                        }
+                    } else {
+                        System.out.println("❌ Aucun acte trouvé avec ce numéro");
+                    }
                     break;
 
                 case "3":
@@ -226,20 +262,33 @@ public class MenuChef {
         MenuPrincipal.attendreEntree();
     }
 
-    /**
-     * Affiche les statistiques
-     */
+
+
     private static void afficherStatistiques(Scanner scanner, ActeService acteService) {
-        System.out.println("\n📊 STATISTIQUES");
-        System.out.println("Cette fonctionnalité sera implémentée dans une version future.");
-        System.out.println("Statistiques prévues:");
-        System.out.println("• Nombre d'actes par type");
-        System.out.println("• Statistiques mensuelles/annuelles");
-        System.out.println("• Répartition par agent");
-        System.out.println("• Évolution des enregistrements");
+        System.out.println("\n📊 STATISTIQUES D'ACTES");
+
+        System.out.print("Année (ex: 2024): ");
+        int annee = Integer.parseInt(scanner.nextLine().trim());
+
+        System.out.print("Mois (1-12 ou 0 pour toute l'année): ");
+        int mois = Integer.parseInt(scanner.nextLine().trim());
+
+        Optional<Integer> moisOpt = (mois == 0) ? Optional.empty() : Optional.of(mois);
+
+        Map<String, Long> stats = acteService.getStatistiquesParTypeEtPeriode(annee, moisOpt);
+
+        if (stats.isEmpty()) {
+            System.out.println("❌ Aucune donnée pour la période spécifiée.");
+        } else {
+            System.out.println("\n📈 Résultat :");
+            stats.forEach((type, total) -> {
+                System.out.printf("• %-10s : %d actes%n", type, total);
+            });
+        }
 
         MenuPrincipal.attendreEntree();
     }
+
 
     /**
      * Génère un rapport

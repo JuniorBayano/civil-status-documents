@@ -14,6 +14,7 @@ import main.java.com.etatcivil.util.ValidationUtil;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -233,7 +234,18 @@ public class ActeService {
         try {
             Optional<Acte> acte = acteDAO.findByNumero(numeroActe);
             if (acte.isPresent()) {
-                return acte.get().genererExtrait();
+                Acte monActe = acte.get();
+
+                // Génère et ouvre le PDF
+                if (monActe instanceof ActeNaissance) {
+                    ((ActeNaissance) monActe).genererExtraitPDF();
+                } else if (monActe instanceof ActeMariage) {
+                    ((ActeMariage) monActe).genererExtraitPDF();
+                } else if (monActe instanceof ActeDeces) {
+                    ((ActeDeces) monActe).genererExtraitPDF();
+                }
+
+                return "✅ PDF généré avec succès.";
             } else {
                 return "❌ Acte non trouvé avec le numéro: " + numeroActe;
             }
@@ -241,6 +253,7 @@ public class ActeService {
             return "❌ Erreur lors de la génération de l'extrait: " + e.getMessage();
         }
     }
+
 
     /**
      * Liste tous les actes (selon les permissions)
@@ -341,6 +354,30 @@ public class ActeService {
         return true;
     }
 
+    /**
+     * Valide un acte (réservé au chef)
+     */
+    public boolean validerActe(int idActe) {
+        if (!authService.canSignActe()) {
+            System.out.println("❌ Seul le chef d'état civil peut valider les actes");
+            return false;
+        }
+
+        try {
+            boolean success = acteDAO.updateStatut(idActe, Acte.StatutActe.SIGNE);
+            if (success) {
+                System.out.println("✅ Acte validé avec succès");
+            } else {
+                System.out.println("❌ Acte non trouvé");
+            }
+            return success;
+
+        } catch (DAOException e) {
+            System.err.println("❌ Erreur lors de la validation: " + e.getMessage());
+            return false;
+        }
+    }
+
     private boolean validerDonneesDeces(String nomDefunt, String prenomDefunt,
                                         LocalDate dateDeces, String lieuDeces,
                                         String declarantNom, String declarantPrenom,
@@ -378,4 +415,11 @@ public class ActeService {
 
         return true;
     }
+    public Map<String, Long> getStatistiquesParTypeEtPeriode(int annee, Optional<Integer> mois) {
+        return acteDAO.getStatistiquesParTypeEtPeriode(annee, mois);
+    }
+
+
+
+
 }

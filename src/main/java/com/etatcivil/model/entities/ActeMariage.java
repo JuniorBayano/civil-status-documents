@@ -1,9 +1,17 @@
 package main.java.com.etatcivil.model.entities;
 
 
+import com.lowagie.text.Document;
+import com.lowagie.text.DocumentException;
+import com.lowagie.text.Paragraph;
+import com.lowagie.text.pdf.PdfWriter;
 import main.java.com.etatcivil.model.entities.Acte;
 import main.java.com.etatcivil.model.enums.TypeActe;
 
+import java.awt.*;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 
@@ -161,40 +169,38 @@ public class ActeMariage extends Acte {
     // Implémentation des méthodes abstraites
     @Override
     public String genererExtrait() {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+        return "EXTRAT D'ACTE DE MARIAGE\n" +
+                "Numéro: " + getNumero() + "\n" +
+                "Entre: " + getPrenomEpoux() + " " + getNomEpoux() + "\n" +
+                "Et: " + getPrenomEpouse() + " " + getNomEpouse() + "\n" +
+                "Mariés le: " + getDateMariage() + " à " + getLieuMariage() + "\n" +
+                "Régime matrimonial: " + getRegimeMatrimonial() + "\n" +
+                "Enregistré le: " + getDateEnregistrement() + " à " + getLieuEnregistrement() + "\n" +
+                "Statut: " + getStatut();
+    }
 
-        StringBuilder extrait = new StringBuilder();
-        extrait.append("=".repeat(60)).append("\n");
-        extrait.append("               EXTRAIT D'ACTE DE MARIAGE\n");
-        extrait.append("=".repeat(60)).append("\n\n");
+    public void genererExtraitPDF() {
+        Document document = new Document();
+        String nomFichier = "Extrait_" + getNumero() + ".pdf";
 
-        extrait.append("Numéro d'acte : ").append(numero).append("\n");
-        extrait.append("Date d'enregistrement : ").append(dateEnregistrement.format(formatter)).append("\n");
-        extrait.append("Lieu d'enregistrement : ").append(lieuEnregistrement).append("\n\n");
+        try {
+            PdfWriter.getInstance(document, new FileOutputStream(nomFichier));
+            document.open();
 
-        extrait.append("INFORMATIONS SUR LE MARIAGE :\n");
-        extrait.append("Date du mariage : ").append(dateMariage.format(formatter)).append("\n");
-        extrait.append("Lieu du mariage : ").append(lieuMariage).append("\n");
-        extrait.append("Régime matrimonial : ").append(regimeMatrimonial).append("\n\n");
+            document.add(new Paragraph(genererExtrait()));
 
-        extrait.append("ÉPOUX :\n");
-        extrait.append("Nom et prénom : ").append(getNomCompletEpoux()).append("\n\n");
+            System.out.println("✅ PDF généré : " + nomFichier);
 
-        extrait.append("ÉPOUSE :\n");
-        extrait.append("Nom et prénom : ").append(getNomCompletEpouse()).append("\n\n");
+            File fichier = new File(nomFichier);
+            if (fichier.exists()) {
+                Desktop.getDesktop().open(fichier); // Ouvre dans Aperçu
+            }
 
-        extrait.append("TÉMOINS :\n");
-        extrait.append("Témoin 1 : ").append(getTemoin1Complet()).append("\n");
-        extrait.append("Témoin 2 : ").append(getTemoin2Complet()).append("\n\n");
-
-        if (numeroRegistre != null) {
-            extrait.append("Numéro de registre : ").append(numeroRegistre).append("\n");
+        } catch (DocumentException | IOException e) {
+            System.out.println("❌ Erreur PDF : " + e.getMessage());
+        } finally {
+            document.close();
         }
-
-        extrait.append("\nStatut : ").append(statut.getLibelle()).append("\n");
-        extrait.append("=".repeat(60));
-
-        return extrait.toString();
     }
 
     @Override

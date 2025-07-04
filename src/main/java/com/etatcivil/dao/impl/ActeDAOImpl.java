@@ -8,6 +8,7 @@ import main.java.com.etatcivil.model.entities.Acte;
 import main.java.com.etatcivil.model.entities.ActeDeces;
 import main.java.com.etatcivil.model.entities.ActeMariage;
 import main.java.com.etatcivil.model.entities.ActeNaissance;
+import main.java.com.etatcivil.model.enums.Sexe;
 import main.java.com.etatcivil.model.enums.TypeActe;
 
 import java.sql.*;
@@ -286,17 +287,38 @@ public class ActeDAOImpl implements IActeDAO {
      * Convertit un ResultSet en objet Acte générique
      */
     private Acte mapResultSetToActe(ResultSet rs) throws SQLException {
-        // Pour le test, on crée un acte générique
-        // Dans une implémentation complète, on chargerait les données spécifiques selon le type
+        TypeActe type = TypeActe.valueOf(rs.getString("type"));
+        int id = rs.getInt("id");
+
+        try {
+            switch (type) {
+                case NAISSANCE:
+                    Optional<ActeNaissance> naissance = findNaissanceById(id);
+                    if (naissance.isPresent()) return naissance.get();
+                    break;
+                case MARIAGE:
+                    Optional<ActeMariage> mariage = findMariageById(id);
+                    if (mariage.isPresent()) return mariage.get();
+                    break;
+                case DECES:
+                    Optional<ActeDeces> deces = findDecesById(id);
+                    if (deces.isPresent()) return deces.get();
+                    break;
+            }
+        } catch (DAOException e) {
+            System.err.println("Erreur lors du chargement des détails de l'acte: " + e.getMessage());
+        }
+
+        // Fallback si on ne peut pas charger les détails spécifiques
         return new Acte() {
             {
-                setId(rs.getInt("id"));
+                setId(id);
                 setNumero(rs.getString("numero"));
-                setType(TypeActe.valueOf(rs.getString("type")));
+                setType(type);
                 setDateEnregistrement(rs.getDate("date_enregistrement").toLocalDate());
                 setLieuEnregistrement(rs.getString("lieu_enregistrement"));
                 setIdAgent(rs.getInt("id_agent"));
-                setStatut(StatutActe.valueOf(rs.getString("statut")));
+                setStatut(Acte.StatutActe.valueOf(rs.getString("statut")));
 
                 Timestamp dateCreation = rs.getTimestamp("date_creation");
                 if (dateCreation != null) {
@@ -305,16 +327,131 @@ public class ActeDAOImpl implements IActeDAO {
             }
 
             @Override
-            public String genererExtrait() { return "Extrait générique"; }
+            public String genererExtrait() {
+                return "Extrait générique - Veuillez implémenter les méthodes spécifiques pour chaque type d'acte";
+            }
+
             @Override
-            public String getInformationsSpecifiques() { return "Informations génériques"; }
+            public String getInformationsSpecifiques() {
+                return "Informations génériques - Type: " + type;
+            }
+
             @Override
             public boolean validerDonnees() { return true; }
         };
     }
+    @Override
+    public boolean updateStatut(int id, Acte.StatutActe nouveauStatut) throws DAOException {
+        String sql = "UPDATE acte SET statut = ? WHERE id = ?";
+
+        try (Connection conn = dbConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, nouveauStatut.name());
+            stmt.setInt(2, id);
+
+            return stmt.executeUpdate() > 0;
+
+        } catch (SQLException e) {
+            throw DAOException.fromSQLException("mise à jour statut acte", e);
+        }
+    }
+
+    @Override
+    public Optional<ActeNaissance> findNaissanceById(int id) throws DAOException {
+        String sqlActe = "SELECT * FROM acte WHERE id = ?";
+        String sqlNaissance = "SELECT * FROM naissance WHERE id_acte = ?";
+
+        try (Connection conn = dbConnection.getConnection();
+             PreparedStatement stmtActe = conn.prepareStatement(sqlActe);
+             PreparedStatement stmtNaissance = conn.prepareStatement(sqlNaissance)) {
+
+            stmtActe.setInt(1, id);
+            stmtNaissance.setInt(1, id);
+
+            try (ResultSet rsActe = stmtActe.executeQuery();
+                 ResultSet rsNaissance = stmtNaissance.executeQuery()) {
+
+                if (rsActe.next() && rsNaissance.next()) {
+                    ActeNaissance acte = new ActeNaissance();
+                    // Remplir les champs de l'acte générique
+                    remplirActeGenerique(rsActe, acte);
+                    // Remplir les champs spécifiques à la naissance
+                    acte.setNomEnfant(rsNaissance.getString("nom_enfant"));
+                    acte.setPrenomEnfant(rsNaissance.getString("prenom_enfant"));
+                    acte.setSexe(Sexe.fromCode(rsNaissance.getString("sexe")));
+                    acte.setDateNaissance(rsNaissance.getDate("date_naissance").toLocalDate());
+                    acte.setLieuNaissance(rsNaissance.getString("lieu_naissance"));
+                    acte.setNomPere(rsNaissance.getString("nom_pere"));
+                    acte.setPrenomPere(rsNaissance.getString("prenom_pere"));
+                    acte.setNomMere(rsNaissance.getString("nom_mere"));
+                    acte.setPrenomMere(rsNaissance.getString("prenom_mere"));
+                    acte.setNumeroRegistre(rsNaissance.getString("numero_registre"));
+
+                    return Optional.of(acte);
+                }
+            }
+
+            return Optional.empty();
+
+        } catch (SQLException e) {
+            throw DAOException.fromSQLException("recherche acte naissance par ID", e);
+        }
+    }
+    private void remplirActeGenerique(ResultSet rs, Acte acte) throws SQLException {
+        acte.setId(rs.getInt("id"));
+        acte.setNumero(rs.getString("numero"));
+        acte.setType(TypeActe.valueOf(rs.getString("type")));
+        acte.setDateEnregistrement(rs.getDate("date_enregistrement").toLocalDate());
+        acte.setLieuEnregistrement(rs.getString("lieu_enregistrement"));
+        acte.setIdAgent(rs.getInt("id_agent"));
+        acte.setStatut(Acte.StatutActe.valueOf(rs.getString("statut")));
+
+        Timestamp dateCreation = rs.getTimestamp("date_creation");
+        if (dateCreation != null) {
+            acte.setDateCreation(dateCreation.toLocalDateTime());
+        }
+    }
+
+    public Map<String, Long> getStatistiquesParTypeEtPeriode(int annee, Optional<Integer> mois) {
+        Map<String, Long> statistiques = new HashMap<>();
+
+        String sql = "SELECT type, COUNT(*) as total FROM acte WHERE EXTRACT(YEAR FROM date_naissance) = ?";
+        if (mois.isPresent()) {
+            sql += " AND EXTRACT(MONTH FROM date_naissance) = ?";
+        }
+        sql += " GROUP BY type";
+
+        try (Connection conn = dbConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, annee);
+            if (mois.isPresent()) {
+                stmt.setInt(2, mois.get());
+            }
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    String type = rs.getString("type");
+                    long total = rs.getLong("total");
+                    statistiques.put(type, total);
+                }
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return statistiques;
+    }
+
+
+// Implémentez de la même manière pour findMariageById et findDecesById
+
+
 
     // Implémentations minimales pour les autres méthodes (à compléter plus tard)
-    @Override public Optional<ActeNaissance> findNaissanceById(int id) throws DAOException { return Optional.empty(); }
+//    @Override public Optional<ActeNaissance> findNaissanceById(int id) throws DAOException { return Optional.empty(); }
     @Override public Optional<ActeMariage> findMariageById(int id) throws DAOException { return Optional.empty(); }
     @Override public Optional<ActeDeces> findDecesById(int id) throws DAOException { return Optional.empty(); }
     @Override public List<Acte> findByType(TypeActe type) throws DAOException { return new ArrayList<>(); }
@@ -324,7 +461,7 @@ public class ActeDAOImpl implements IActeDAO {
     @Override public List<ActeNaissance> rechercherNaissance(String nom, String prenom) throws DAOException { return new ArrayList<>(); }
     @Override public List<ActeMariage> rechercherMariage(String nomEpoux, String nomEpouse) throws DAOException { return new ArrayList<>(); }
     @Override public List<ActeDeces> rechercherDeces(String nom, String prenom) throws DAOException { return new ArrayList<>(); }
-    @Override public boolean updateStatut(int id, Acte.StatutActe nouveauStatut) throws DAOException { return false; }
+//    @Override public boolean updateStatut(int id, Acte.StatutActe nouveauStatut) throws DAOException { return false; }
     @Override public boolean delete(int id) throws DAOException { return false; }
     @Override public boolean existsByNumero(String numero) throws DAOException { return false; }
     @Override public long countByType(TypeActe type) throws DAOException { return 0; }

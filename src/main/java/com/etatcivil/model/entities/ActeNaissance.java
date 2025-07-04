@@ -1,8 +1,16 @@
 package main.java.com.etatcivil.model.entities;
 
+import com.lowagie.text.Document;
+import com.lowagie.text.DocumentException;
+import com.lowagie.text.Paragraph;
+import com.lowagie.text.pdf.PdfWriter;
 import main.java.com.etatcivil.model.enums.Sexe;
 import main.java.com.etatcivil.model.enums.TypeActe;
 
+import java.awt.*;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 
@@ -138,37 +146,41 @@ public class ActeNaissance extends Acte {
     // Implémentation des méthodes abstraites
     @Override
     public String genererExtrait() {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-
-        StringBuilder extrait = new StringBuilder();
-        extrait.append("=".repeat(60)).append("\n");
-        extrait.append("               EXTRAIT D'ACTE DE NAISSANCE\n");
-        extrait.append("=".repeat(60)).append("\n\n");
-
-        extrait.append("Numéro d'acte : ").append(numero).append("\n");
-        extrait.append("Date d'enregistrement : ").append(dateEnregistrement.format(formatter)).append("\n");
-        extrait.append("Lieu d'enregistrement : ").append(lieuEnregistrement).append("\n\n");
-
-        extrait.append("INFORMATIONS SUR L'ENFANT :\n");
-        extrait.append("Nom et prénom : ").append(getNomCompletEnfant()).append("\n");
-        extrait.append("Sexe : ").append(sexe.getLibelle()).append("\n");
-        extrait.append("Date de naissance : ").append(dateNaissance.format(formatter)).append("\n");
-        extrait.append("Lieu de naissance : ").append(lieuNaissance).append("\n\n");
-
-        extrait.append("FILIATION :\n");
-        extrait.append("Père : ").append(getNomCompletPere()).append("\n");
-        extrait.append("Mère : ").append(getNomCompletMere()).append("\n\n");
-
-        if (numeroRegistre != null) {
-            extrait.append("Numéro de registre : ").append(numeroRegistre).append("\n");
-        }
-
-        extrait.append("\nStatut : ").append(statut.getLibelle()).append("\n");
-        extrait.append("=".repeat(60));
-
-        return extrait.toString();
+        return "EXTRAT D'ACTE DE NAISSANCE\n" +
+                "Numéro: " + getNumero() + "\n" +
+                "Enfant: " + getPrenomEnfant() + " " + getNomEnfant() + "\n" +
+                "Né(e) le: " + getDateNaissance() + " à " + getLieuNaissance() + "\n" +
+                "Fils/Fille de: " + (getPrenomPere() != null ? getPrenomPere() + " " + getNomPere() : "[non déclaré]") +
+                " et " + getPrenomMere() + " " + getNomMere() + "\n" +
+                "Enregistré le: " + getDateEnregistrement() + " à " + getLieuEnregistrement() + "\n" +
+                "Statut: " + getStatut();
     }
 
+    public void genererExtraitPDF() {
+        Document document = new Document();
+        String nomFichier = "Extrait_" + getNumero() + ".pdf";
+
+        try {
+            PdfWriter.getInstance(document, new FileOutputStream(nomFichier));
+            document.open();
+
+            // Le contenu : réutilise exactement ta méthode genererExtrait()
+            document.add(new Paragraph(genererExtrait()));
+
+            System.out.println("✅ PDF généré : " + nomFichier);
+
+            // Ouverture automatique dans Aperçu (macOS)
+            File fichier = new File(nomFichier);
+            if (fichier.exists()) {
+                Desktop.getDesktop().open(fichier);
+            }
+
+        } catch (DocumentException | IOException e) {
+            System.out.println("❌ Erreur PDF : " + e.getMessage());
+        } finally {
+            document.close();
+        }
+    }
     @Override
     public String getInformationsSpecifiques() {
         return String.format("Enfant: %s, né(e) le %s à %s",
